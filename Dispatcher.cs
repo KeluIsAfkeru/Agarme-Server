@@ -20,7 +20,7 @@ namespace Agarme_Server
             {
                 string input = Console.ReadLine();
                 if (input.Trim() == "Stop")
-                    mapSolver.server.Close();
+                    mapSolver.server.CloseServer();
             }
 
             Console.ReadLine();

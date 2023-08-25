@@ -9,8 +9,9 @@ namespace Agarme_Server
     public class ServerConfig
     {
         // Server
-        public string ServerIP { get; private set; } = "0.0.0.0"; // 服务端IP
-        public ushort ServerPort { get; private set; } = 6666; // 端口
+        public string ServerIP { get; private set; } = "127.0.0.1"; // 服务端IP
+        public ushort ServerPort { get; private set; } = 8080; // 端口
+        public bool IsWss { get; private set; } = false; // 是否使用WSS协议
         public string ServerVersion { get; private set; } = "V1.0.0"; // 服务端版本号
         public ushort ServerVersionCode { get; private set; } = 100; // 服务端版本代码
         public string WelcomeMessage { get; set; } = "欢迎加入Afkeru的服务器，祝您玩得愉快！"; // 欢迎语句
@@ -23,6 +24,8 @@ namespace Agarme_Server
         public int ServerTickInterval { get; set; } = 35; // 服务端处理周期
 
         // Map
+        public int MapLeft { get; set; } = 100; // 地图左上角横坐标
+        public int MapTop { get; set; } = 100; // 地图左上角纵坐标
         public int MapWidth { get; set; } = 1500; // 地图宽度
         public int MapHeight { get; set; } = 1500; // 地图高度
         public int MapPlayerLimit { get; set; } = 50; // 一个地图最大承载玩家数

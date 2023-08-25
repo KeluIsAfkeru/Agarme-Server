@@ -21,7 +21,10 @@ namespace Agarme_Server.World
             config = configs.FirstOrDefault();
             gameModeManager = new GameModeManager();
             gameMode = gameModeManager.GetGameModeById(config.MapGameMode);
-            server = new GameServer(this);
+
+            string url = $"{(config.IsWss ? "wss" : "ws")}://{config.ServerIP.Trim()}:{config.ServerPort}";
+            server = new GameServer(this, url);
+
             mapManager = new MapManager(this);
 
             gameClock = new GameClock(16);
@@ -30,7 +33,7 @@ namespace Agarme_Server.World
 
         public void Start()
         {
-            server.Launch(config.ServerIP, config.ServerPort);
+            server.Launch();
             // 启动服务器先初始化一个Map
             var map = mapManager.CreatNewMap();
             if (map is not null)

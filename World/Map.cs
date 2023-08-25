@@ -1,4 +1,5 @@
-﻿using Agarme_Server.Entity;
+﻿using Agarme_Server.CostomType;
+using Agarme_Server.Entity;
 using Agarme_Server.Misc;
 using Agarme_Server.Router;
 using System.Diagnostics.Metrics;
@@ -12,6 +13,7 @@ namespace Agarme_Server.World
         public uint Id;
         public MapManager mapManager;
         public ServerConfig config;
+        public HkRect Border;
         public List<Cell> cells = new List<Cell>();
         public List<Food> foods = new List<Food>();
         public List<Virus> viruses = new List<Virus>();
@@ -25,6 +27,7 @@ namespace Agarme_Server.World
         {
             this.mapManager = mapManager;
             config = mapManager.mapSolver.config;
+            Border = new(config.MapLeft,config.MapTop,config.MapWidth,config.MapHeight);
             Id = Allocator.Allocate();
         }
 

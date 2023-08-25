@@ -1,12 +1,18 @@
-﻿using System.Drawing;
+﻿using MessagePack;
+using System.Drawing;
 
 namespace Agarme_Server.CostomType
 {
+    [MessagePackObject]
     public class HkRect
     {
+        [Key(0)]
         public double X { get; set; }
+        [Key(1)]
         public double Y { get; set; }
+        [Key(2)]
         public double Width { get; set; }
+        [Key(3)]
         public double Height { get; set; }
 
         public HkRect(double x, double y, double width, double height)
@@ -16,12 +22,16 @@ namespace Agarme_Server.CostomType
             Width = width;
             Height = height;
         }
-
+        [IgnoreMember]
         public double Left => X;
+        [IgnoreMember]
         public double Top => Y;
+        [IgnoreMember]
         public double Right => X + Width;
+        [IgnoreMember]
         public double Bottom => Y + Height;
 
+        [IgnoreMember]
         public double Area => Width * Height;
 
         public bool Contains(double x, double y) => x >= X && x <= X + Width && y >= Y && y <= Y + Height;

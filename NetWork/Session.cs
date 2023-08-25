@@ -1,53 +1,41 @@
 ﻿using Agarme_Server.Misc;
+using Agarme_Server.Protocols;
 using Agarme_Server.Router;
 using HPSocket;
-
+using HPSocket.WebSocket;
+using System.Collections.Concurrent;
 
 namespace Agarme_Server.NetWork
 {
-    public class Session
+    public class Session: IHub
     {
+        private ConcurrentDictionary<uint,PlayerRouter> playersToJoin;
         private GameServer server;
+        private Protocol protocol;
 
-        public Session(GameServer server)
+        public Session()
         {
-            this.server = server;
-            server.OnPrepareListen += new ServerPrepareListenEventHandler(OnPrepareListen);
-            server.OnAccept += new ServerAcceptEventHandler(OnAccept);
-            server.OnReceive += new ServerReceiveEventHandler(OnReceive);
-            server.OnClose += new ServerCloseEventHandler(OnClose);
-            server.OnShutdown += new ServerShutdownEventHandler(OnShutDown);
+            playersToJoin = new ConcurrentDictionary<uint, PlayerRouter>(Environment.ProcessorCount, 20);
         }
 
-        private HandleResult OnPrepareListen(IServer sender, IntPtr listen) => HandleResult.Ok;
-
-
-        private HandleResult OnShutDown(IServer sender) => HandleResult.Ok;
-
-
-        private HandleResult OnAccept(IServer sender, IntPtr connId, IntPtr client)
+        public void IniServer(GameServer server)
         {
-            Logger.Log($"ID为：{connId}的玩家加入了服务器", LogLevel.Info);
+            this.server = server;
+            protocol = server.protocol;
+        }
 
-            string clientIp;
-            ushort clientPort;
-            server.GetRemoteAddress(connId, out clientIp, out clientPort);
+        public HandleResult OnOpen(IWebSocketServer sender, IntPtr connId)
+        {
+            PlayerRouter router = new PlayerRouter(server, connId);
 
-            PlayerRouter router = new PlayerRouter(server, connId, (clientIp, clientPort));
-
-            if (!server.JoinRouter(router))
-            {
-                server.Disconnect(connId, true);
-                return HandleResult.Error;
-            }
-
-            //....处理成功连接后的逻辑
+            // 将新加入的用户放入待加入队列中
+            playersToJoin.TryAdd((uint)connId, router);
 
             return HandleResult.Ok;
         }
 
 
-        private HandleResult OnClose(IServer sender, IntPtr connId, SocketOperation socketOperation, int errorCode)
+        public HandleResult OnClose(IWebSocketServer sender, IntPtr connId, SocketOperation socketOperation, int errorCode)
         {
             Logger.Log($"ID为：{connId}的玩家退出了游戏", LogLevel.Info);
 
@@ -57,13 +45,66 @@ namespace Agarme_Server.NetWork
         }
 
 
-        unsafe private HandleResult OnReceive(IServer sender, IntPtr connId, byte[] data)
+        public HandleResult OnMessage(IWebSocketServer sender, IntPtr connId, bool final, OpCode opCode, byte[] mask, byte[] data)
         {
-            //.......
+            PlayerRouter router = server.PlayerRouterById((uint)connId);
+
+            protocol.handleIpReceived(data, IpReceivedCallback(connId,router));
+
 
             return HandleResult.Ok;
         }
 
+        public void OnPing(IWebSocketServer sender, IntPtr connId, byte[] data)
+        {
+        }
+
+        public void OnPong(IWebSocketServer sender, IntPtr connId, byte[] data)
+        {
+
+        }
+
+        private Action<string> IpReceivedCallback(IntPtr connId,PlayerRouter router)
+        {
+            return (address) =>
+            {
+                if (router is null && !playersToJoin.TryGetValue((uint)connId, out router))
+                {
+                    LogAndCloseConnection("接收到消息的玩家不在待加入队列中", LogLevel.Error, connId);
+                    return;
+                }
+
+                try
+                {
+                    router.SetAddress(address, server.mapSolver.config.ServerPort);
+
+                    if (!server.JoinRouter(router))
+                    {
+                        LogAndCloseConnection($"服务器加入路由失败：{router.Id}", LogLevel.Error, connId);
+                        return;
+                    }
+
+                    if (!playersToJoin.TryRemove(router.Id, out _))
+                        Logger.Log($"移除玩家失败：{router.Id}", LogLevel.Error);
+
+                    protocol.sendAfterJoin(router);
+
+                    Logger.Log($"ID为：{connId}的玩家加入了服务器", LogLevel.Info);
+                }
+                catch (Exception ex)
+                {
+                    LogAndCloseConnection($"处理IP接收协议时出错：{ex}", LogLevel.Error, connId);
+                    return;
+                }
+            };
+        }
+
+        private void LogAndCloseConnection(string message, LogLevel level, IntPtr connId)
+        {
+            Logger.Log(message, level);
+            server.Close(connId);
+        }
 
     }
+
 }
